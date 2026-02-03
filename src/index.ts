@@ -7,6 +7,7 @@ interface GlobalConfig {
 }
 
 let globalConfig: GlobalConfig | null = null;
+let ssrLangOverride: string | null = null;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -22,7 +23,13 @@ function assertInitialized(
   return true;
 }
 
-function getLanguageFromPath(languages: string[]): string | null {
+function getCurrentLanguage(languages: string[]): string | null {
+  // SSR override takes priority
+  if (ssrLangOverride && languages.includes(ssrLangOverride)) {
+    return ssrLangOverride;
+  }
+
+  // Fall back to URL detection
   if (!isBrowser()) {
     return null;
   }
@@ -83,7 +90,7 @@ export function say(key: string): string {
   }
 
   const { dictionary, languages } = globalConfig;
-  const lang = getLanguageFromPath(languages);
+  const lang = getCurrentLanguage(languages);
 
   if (!lang) {
     return key;
@@ -106,7 +113,15 @@ export function getLanguage(): string | null {
     return null;
   }
 
-  return getLanguageFromPath(globalConfig.languages);
+  return getCurrentLanguage(globalConfig.languages);
+}
+
+/**
+ * Set the language for SSR contexts where window doesn't exist.
+ * Optional - only needed for SSR frameworks (Next.js, Remix, etc.)
+ */
+export function ssrLang(lang: string | null): void {
+  ssrLangOverride = lang;
 }
 
 /**
