@@ -67,7 +67,7 @@ The language is detected from the first path segment:
 Extract translation keys from your source files:
 
 ```bash
-npx say-dictionary extract --src ./app --out ./dictionary.json
+npx say-dictionary extract --src ./app --out ./dictionary.json --languages en,is
 ```
 
 Options:
@@ -75,6 +75,17 @@ Options:
 - `--src, -s` - Source directory to scan (required)
 - `--out, -o` - Output dictionary file (required)
 - `--languages, -l` - Comma-separated list of languages (default: en,is)
+
+Example output in `dictionary.json`:
+
+```json
+{
+  "Order Now": { "en": "Order Now", "is": "" },
+  "Welcome": { "en": "Welcome", "is": "" }
+}
+```
+
+The first language gets the key as default value. Hand this to an LLM to fill in the translations.
 
 ## License
 
