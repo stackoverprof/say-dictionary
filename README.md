@@ -23,11 +23,10 @@ pnpm add say-dictionary
 import { init } from 'say-dictionary';
 import dictionary from './dictionary.json';
 
-init({
-  dictionary,
-  defaultLanguage: 'en'
-});
+init({ dictionary });
 ```
+
+The default language is the first language key in your dictionary. Override with `defaultLanguage` if needed.
 
 ### 2. Use anywhere
 
