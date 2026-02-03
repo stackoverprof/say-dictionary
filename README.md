@@ -2,6 +2,10 @@
 
 URL-based i18n with configurable languages and a CLI for extracting translation keys.
 
+## Why?
+
+The dictionary format is designed to be **LLM-friendly**. Just hand your `dictionary.json` to an AI and ask it to translate — done. No complex tooling, no translation service integrations, no manual key mapping.
+
 ## Installation
 
 ```bash
