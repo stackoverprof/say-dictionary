@@ -12,56 +12,49 @@ pnpm add say-dictionary
 
 ## Usage
 
-### Configure
+### 1. Initialize (once in your entry point)
 
 ```ts
-import { configure } from 'say-dictionary';
+// root.tsx or app entry
+import { init } from 'say-dictionary';
+import dictionary from './dictionary.json';
 
-const { say, getLanguage, setLanguage } = configure({
-  languages: ['en', 'is'],
-  defaultLanguage: 'en',
-  dictionary: {
-    "Order Now": { en: "Order Now", is: "Panta núna" },
-    "Welcome": { en: "Welcome", is: "Velkomin" }
-  }
+init({
+  dictionary,
+  defaultLanguage: 'en'
 });
 ```
 
-### say(key)
-
-Get the translated text for the current language (detected from URL path).
+### 2. Use anywhere
 
 ```ts
+import { say, getLanguage, setLanguage } from 'say-dictionary';
+
+// Get translated text
 say("Order Now"); // Returns "Order Now" or "Panta núna" based on URL
+
+// Get current language from URL
+getLanguage(); // "en" or "is"
+
+// Navigate to different language
+setLanguage('is'); // Redirects to /is/current-path
 ```
 
-### getLanguage()
+## Dictionary Format
 
-Returns the current language detected from the URL path.
-
-```ts
-// URL: /is/products
-getLanguage(); // Returns "is"
-
-// URL: /products
-getLanguage(); // Returns "en" (default)
+```json
+{
+  "Order Now": { "en": "Order Now", "is": "Panta núna" },
+  "Welcome": { "en": "Welcome", "is": "Velkomin" }
+}
 ```
 
-### setLanguage(lang)
-
-Navigate to the same page in a different language.
-
-```ts
-// Current URL: /products
-setLanguage('is');
-// Navigates to: /is/products
-```
+Languages are automatically detected from the dictionary keys.
 
 ## URL Structure
 
 The language is detected from the first path segment:
 
-- `/en/about` → English
 - `/is/about` → Icelandic
 - `/about` → Default language (English)
 
@@ -78,29 +71,6 @@ Options:
 - `--src, -s` - Source directory to scan (required)
 - `--out, -o` - Output dictionary file (required)
 - `--languages, -l` - Comma-separated list of languages (default: en,is)
-
-### Example
-
-```bash
-npx say-dictionary extract --src ./app --out ./dictionary.json --languages en,is,de
-```
-
-This scans your source files for `say("...")` calls and updates `dictionary.json` with any missing keys.
-
-## Type Safety
-
-The package includes full TypeScript support with proper type inference:
-
-```ts
-const { say, getLanguage, setLanguage } = configure({
-  languages: ['en', 'is'] as const,
-  defaultLanguage: 'en',
-  dictionary: {}
-});
-
-// setLanguage only accepts 'en' | 'is'
-setLanguage('fr'); // TypeScript error
-```
 
 ## License
 
