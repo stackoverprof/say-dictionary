@@ -2,19 +2,16 @@
 
 import * as fs from "fs";
 import * as path from "path";
-
-interface DictionaryEntry {
-  [lang: string]: string;
-}
-
-interface Dictionary {
-  [key: string]: DictionaryEntry;
-}
+import {
+  EXCLUDED_DIRECTORIES,
+  SAY_CALL_PATTERN,
+  SOURCE_EXTENSIONS,
+} from "./constants";
+import type { Dictionary } from "./types";
 
 function extractKeys(content: string): string[] {
   const keys: string[] = [];
-  // Match say("...") or say('...')
-  const regex = /\bsay\s*\(\s*["'`]([^"'`]+)["'`]\s*\)/g;
+  const regex = new RegExp(SAY_CALL_PATTERN.source, SAY_CALL_PATTERN.flags);
   let match;
 
   while ((match = regex.exec(content)) !== null) {
@@ -24,7 +21,15 @@ function extractKeys(content: string): string[] {
   return keys;
 }
 
-function walkDir(dir: string, extensions: string[]): string[] {
+function isExcludedDirectory(name: string): boolean {
+  return (
+    EXCLUDED_DIRECTORIES.includes(
+      name as (typeof EXCLUDED_DIRECTORIES)[number]
+    ) || name.startsWith(".")
+  );
+}
+
+function walkDir(dir: string): string[] {
   const files: string[] = [];
 
   function walk(currentDir: string) {
@@ -34,18 +39,14 @@ function walkDir(dir: string, extensions: string[]): string[] {
       const fullPath = path.join(currentDir, entry.name);
 
       if (entry.isDirectory()) {
-        // Skip node_modules and hidden directories
-        if (
-          entry.name !== "node_modules" &&
-          !entry.name.startsWith(".") &&
-          entry.name !== "dist" &&
-          entry.name !== "build"
-        ) {
+        if (!isExcludedDirectory(entry.name)) {
           walk(fullPath);
         }
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name);
-        if (extensions.includes(ext)) {
+        if (
+          SOURCE_EXTENSIONS.includes(ext as (typeof SOURCE_EXTENSIONS)[number])
+        ) {
           files.push(fullPath);
         }
       }
@@ -57,11 +58,18 @@ function walkDir(dir: string, extensions: string[]): string[] {
 }
 
 function loadDictionary(filePath: string): Dictionary {
-  if (fs.existsSync(filePath)) {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+
+  try {
     const content = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(content);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`Error reading dictionary file: ${message}`);
+    process.exit(1);
   }
-  return {};
 }
 
 function saveDictionary(filePath: string, dictionary: Dictionary): void {
@@ -93,18 +101,20 @@ Example:
 `);
 }
 
-function parseArgs(args: string[]): {
+interface ParsedArgs {
   command?: string;
   src?: string;
   out?: string;
   languages?: string[];
   help: boolean;
-} {
-  const result = {
-    command: undefined as string | undefined,
-    src: undefined as string | undefined,
-    out: undefined as string | undefined,
-    languages: undefined as string[] | undefined,
+}
+
+function parseArgs(args: string[]): ParsedArgs {
+  const result: ParsedArgs = {
+    command: undefined,
+    src: undefined,
+    out: undefined,
+    languages: undefined,
     help: false,
   };
 
@@ -127,6 +137,59 @@ function parseArgs(args: string[]): {
   return result;
 }
 
+function runExtract(parsed: ParsedArgs): void {
+  if (!parsed.languages || !parsed.src || !parsed.out) {
+    console.error("Error: -l, -i, and -o are all required");
+    printUsage();
+    process.exit(1);
+  }
+
+  const srcDir = path.resolve(parsed.src);
+  const outFile = path.resolve(parsed.out);
+
+  if (!fs.existsSync(srcDir)) {
+    console.error(`Error: Source directory does not exist: ${srcDir}`);
+    process.exit(1);
+  }
+
+  console.log(`Scanning ${srcDir} for say() calls...`);
+
+  const files = walkDir(srcDir);
+  const allKeys = new Set<string>();
+
+  for (const file of files) {
+    const content = fs.readFileSync(file, "utf-8");
+    const keys = extractKeys(content);
+    keys.forEach((key) => allKeys.add(key));
+  }
+
+  console.log(`Found ${allKeys.size} unique keys in ${files.length} files`);
+
+  const existingDict = loadDictionary(outFile);
+  let newKeysCount = 0;
+
+  for (const key of allKeys) {
+    if (!existingDict[key]) {
+      existingDict[key] = {};
+      for (const lang of parsed.languages) {
+        existingDict[key][lang] = lang === parsed.languages[0] ? key : "";
+      }
+      newKeysCount++;
+    } else {
+      for (const lang of parsed.languages) {
+        if (existingDict[key][lang] === undefined) {
+          existingDict[key][lang] = "";
+        }
+      }
+    }
+  }
+
+  saveDictionary(outFile, existingDict);
+
+  console.log(`Added ${newKeysCount} new keys`);
+  console.log(`Dictionary saved to ${outFile}`);
+}
+
 function main(): void {
   const args = process.argv.slice(2);
   const parsed = parseArgs(args);
@@ -137,57 +200,7 @@ function main(): void {
   }
 
   if (parsed.command === "extract") {
-    if (!parsed.languages || !parsed.src || !parsed.out) {
-      console.error("Error: -l, -i, and -o are all required");
-      printUsage();
-      process.exit(1);
-    }
-
-    const srcDir = path.resolve(parsed.src);
-    const outFile = path.resolve(parsed.out);
-
-    if (!fs.existsSync(srcDir)) {
-      console.error(`Error: Source directory does not exist: ${srcDir}`);
-      process.exit(1);
-    }
-
-    console.log(`Scanning ${srcDir} for say() calls...`);
-
-    const files = walkDir(srcDir, [".ts", ".tsx", ".js", ".jsx"]);
-    const allKeys = new Set<string>();
-
-    for (const file of files) {
-      const content = fs.readFileSync(file, "utf-8");
-      const keys = extractKeys(content);
-      keys.forEach((key) => allKeys.add(key));
-    }
-
-    console.log(`Found ${allKeys.size} unique keys in ${files.length} files`);
-
-    const existingDict = loadDictionary(outFile);
-    let newKeysCount = 0;
-
-    for (const key of allKeys) {
-      if (!existingDict[key]) {
-        existingDict[key] = {};
-        for (const lang of parsed.languages) {
-          existingDict[key][lang] = lang === parsed.languages[0] ? key : "";
-        }
-        newKeysCount++;
-      } else {
-        // Ensure all languages are present
-        for (const lang of parsed.languages) {
-          if (existingDict[key][lang] === undefined) {
-            existingDict[key][lang] = "";
-          }
-        }
-      }
-    }
-
-    saveDictionary(outFile, existingDict);
-
-    console.log(`Added ${newKeysCount} new keys`);
-    console.log(`Dictionary saved to ${outFile}`);
+    runExtract(parsed);
   }
 }
 

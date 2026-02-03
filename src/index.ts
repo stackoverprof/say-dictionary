@@ -1,4 +1,5 @@
-type Dictionary = Record<string, Record<string, string>>;
+import { LOG_PREFIX } from "./constants";
+import type { Dictionary } from "./types";
 
 interface GlobalConfig {
   dictionary: Dictionary;
@@ -7,8 +8,22 @@ interface GlobalConfig {
 
 let globalConfig: GlobalConfig | null = null;
 
+function isBrowser(): boolean {
+  return typeof window !== "undefined";
+}
+
+function assertInitialized(
+  config: GlobalConfig | null
+): config is GlobalConfig {
+  if (!config) {
+    console.warn(`${LOG_PREFIX} Not initialized. Call init() first.`);
+    return false;
+  }
+  return true;
+}
+
 function getLanguageFromPath(languages: string[]): string | null {
-  if (typeof window === "undefined") {
+  if (!isBrowser()) {
     return null;
   }
 
@@ -24,7 +39,7 @@ function getLanguageFromPath(languages: string[]): string | null {
 }
 
 function setLanguageInPath(lang: string, languages: string[]): void {
-  if (typeof window === "undefined") {
+  if (!isBrowser()) {
     return;
   }
 
@@ -40,7 +55,8 @@ function setLanguageInPath(lang: string, languages: string[]): void {
     newPath = "/" + lang + pathname;
   }
 
-  window.location.href = newPath + window.location.search + window.location.hash;
+  window.location.href =
+    newPath + window.location.search + window.location.hash;
 }
 
 /**
@@ -62,8 +78,7 @@ export function init(dictionary: Dictionary): void {
  * Returns the key itself if no translation found.
  */
 export function say(key: string): string {
-  if (!globalConfig) {
-    console.warn("[say-dictionary] Not initialized. Call init() first.");
+  if (!assertInitialized(globalConfig)) {
     return key;
   }
 
@@ -87,8 +102,7 @@ export function say(key: string): string {
  * Returns null if no language prefix in URL.
  */
 export function getLanguage(): string | null {
-  if (!globalConfig) {
-    console.warn("[say-dictionary] Not initialized. Call init() first.");
+  if (!assertInitialized(globalConfig)) {
     return null;
   }
 
@@ -99,15 +113,14 @@ export function getLanguage(): string | null {
  * Navigate to the same page in a different language.
  */
 export function setLanguage(lang: string): void {
-  if (!globalConfig) {
-    console.warn("[say-dictionary] Not initialized. Call init() first.");
+  if (!assertInitialized(globalConfig)) {
     return;
   }
 
   const { languages } = globalConfig;
 
   if (!languages.includes(lang)) {
-    console.warn(`[say-dictionary] Invalid language: "${lang}"`);
+    console.warn(`${LOG_PREFIX} Invalid language: "${lang}"`);
     return;
   }
 
@@ -121,7 +134,11 @@ export function configure(options: {
   languages: string[];
   defaultLanguage: string;
   dictionary: Dictionary;
-}): { say: typeof say; getLanguage: typeof getLanguage; setLanguage: typeof setLanguage } {
+}): {
+  say: typeof say;
+  getLanguage: typeof getLanguage;
+  setLanguage: typeof setLanguage;
+} {
   init(options.dictionary);
   return { say, getLanguage, setLanguage };
 }
