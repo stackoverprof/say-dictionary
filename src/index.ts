@@ -1,25 +1,15 @@
 type Dictionary = Record<string, Record<string, string>>;
 
-interface InitOptions {
-  dictionary: Dictionary;
-  defaultLanguage?: string;
-}
-
 interface GlobalConfig {
   dictionary: Dictionary;
   languages: string[];
-  defaultLanguage: string;
 }
 
-// Global state
 let globalConfig: GlobalConfig | null = null;
 
-function getLanguageFromPath(
-  languages: string[],
-  defaultLanguage: string
-): string {
+function getLanguageFromPath(languages: string[]): string | null {
   if (typeof window === "undefined") {
-    return defaultLanguage;
+    return null;
   }
 
   const pathname = window.location.pathname;
@@ -30,14 +20,10 @@ function getLanguageFromPath(
     return firstSegment;
   }
 
-  return defaultLanguage;
+  return null;
 }
 
-function setLanguageInPath(
-  lang: string,
-  languages: string[],
-  defaultLanguage: string
-): void {
+function setLanguageInPath(lang: string, languages: string[]): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -54,34 +40,26 @@ function setLanguageInPath(
     newPath = "/" + lang + pathname;
   }
 
-  if (lang === defaultLanguage) {
-    const newSegments = newPath.split("/").filter(Boolean);
-    if (newSegments[0] === defaultLanguage) {
-      newSegments.shift();
-      newPath = "/" + newSegments.join("/") || "/";
-    }
-  }
-
   window.location.href = newPath + window.location.search + window.location.hash;
 }
 
 /**
- * Initialize say-dictionary with your dictionary and default language.
+ * Initialize say-dictionary with your dictionary.
  * Call this once in your app's entry point (e.g., root.tsx).
  */
-export function init(options: InitOptions): void {
-  const firstEntry = Object.values(options.dictionary)[0];
+export function init(dictionary: Dictionary): void {
+  const firstEntry = Object.values(dictionary)[0];
   const languages = firstEntry ? Object.keys(firstEntry) : [];
 
   globalConfig = {
-    dictionary: options.dictionary,
+    dictionary,
     languages,
-    defaultLanguage: options.defaultLanguage || languages[0] || "en",
   };
 }
 
 /**
  * Get the translated text for a key based on the current language.
+ * Returns the key itself if no translation found.
  */
 export function say(key: string): string {
   if (!globalConfig) {
@@ -89,37 +67,32 @@ export function say(key: string): string {
     return key;
   }
 
-  const { dictionary, languages, defaultLanguage } = globalConfig;
-  const lang = getLanguageFromPath(languages, defaultLanguage);
-  const entry = dictionary[key];
+  const { dictionary, languages } = globalConfig;
+  const lang = getLanguageFromPath(languages);
 
-  if (!entry) {
-    console.warn(`[say-dictionary] Missing key: "${key}"`);
+  if (!lang) {
     return key;
   }
 
-  const translation = entry[lang];
-
-  if (!translation) {
-    console.warn(
-      `[say-dictionary] Missing translation for key "${key}" in language "${lang}"`
-    );
-    return entry[defaultLanguage] || key;
+  const entry = dictionary[key];
+  if (!entry) {
+    return key;
   }
 
-  return translation;
+  return entry[lang] || key;
 }
 
 /**
  * Get the current language detected from the URL path.
+ * Returns null if no language prefix in URL.
  */
-export function getLanguage(): string {
+export function getLanguage(): string | null {
   if (!globalConfig) {
     console.warn("[say-dictionary] Not initialized. Call init() first.");
-    return "en";
+    return null;
   }
 
-  return getLanguageFromPath(globalConfig.languages, globalConfig.defaultLanguage);
+  return getLanguageFromPath(globalConfig.languages);
 }
 
 /**
@@ -131,30 +104,26 @@ export function setLanguage(lang: string): void {
     return;
   }
 
-  const { languages, defaultLanguage } = globalConfig;
+  const { languages } = globalConfig;
 
   if (!languages.includes(lang)) {
     console.warn(`[say-dictionary] Invalid language: "${lang}"`);
     return;
   }
 
-  setLanguageInPath(lang, languages, defaultLanguage);
+  setLanguageInPath(lang, languages);
 }
 
 /**
  * @deprecated Use init() and direct imports instead.
- * Kept for backwards compatibility.
  */
 export function configure(options: {
   languages: string[];
   defaultLanguage: string;
   dictionary: Dictionary;
 }): { say: typeof say; getLanguage: typeof getLanguage; setLanguage: typeof setLanguage } {
-  init({
-    dictionary: options.dictionary,
-    defaultLanguage: options.defaultLanguage,
-  });
+  init(options.dictionary);
   return { say, getLanguage, setLanguage };
 }
 
-export type { Dictionary, InitOptions };
+export type { Dictionary };
