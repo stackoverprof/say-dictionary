@@ -80,16 +80,16 @@ function printUsage(): void {
 say-dictionary CLI - Extract translation keys from source files
 
 Usage:
-  say-dictionary extract --src <dir> --out <file> [--languages <langs>]
+  say-dictionary extract -l <langs> -i <dir> -o <file>
 
 Options:
-  --src, -s       Source directory to scan (required)
-  --out, -o       Output dictionary file (required)
-  --languages, -l Comma-separated list of languages (default: en,is)
-  --help, -h      Show this help message
+  -l, --lang  Comma-separated list of languages (first lang gets key as default)
+  -i, --in    Source directory to scan
+  -o, --out   Output dictionary file
+  -h, --help  Show this help message
 
 Example:
-  say-dictionary extract --src ./app --out ./dictionary.json --languages en,is,de
+  say-dictionary extract -l en,is -i ./app -o ./dictionary.json
 `);
 }
 
@@ -97,14 +97,14 @@ function parseArgs(args: string[]): {
   command?: string;
   src?: string;
   out?: string;
-  languages: string[];
+  languages?: string[];
   help: boolean;
 } {
   const result = {
     command: undefined as string | undefined,
     src: undefined as string | undefined,
     out: undefined as string | undefined,
-    languages: ["en", "is"],
+    languages: undefined as string[] | undefined,
     help: false,
   };
 
@@ -115,12 +115,12 @@ function parseArgs(args: string[]): {
       result.command = "extract";
     } else if (arg === "--help" || arg === "-h") {
       result.help = true;
-    } else if (arg === "--src" || arg === "-s") {
+    } else if (arg === "--in" || arg === "-i") {
       result.src = args[++i];
     } else if (arg === "--out" || arg === "-o") {
       result.out = args[++i];
-    } else if (arg === "--languages" || arg === "-l") {
-      result.languages = args[++i]?.split(",") || ["en", "is"];
+    } else if (arg === "--lang" || arg === "-l") {
+      result.languages = args[++i]?.split(",");
     }
   }
 
@@ -137,8 +137,8 @@ function main(): void {
   }
 
   if (parsed.command === "extract") {
-    if (!parsed.src || !parsed.out) {
-      console.error("Error: --src and --out are required for extract command");
+    if (!parsed.languages || !parsed.src || !parsed.out) {
+      console.error("Error: -l, -i, and -o are all required");
       printUsage();
       process.exit(1);
     }

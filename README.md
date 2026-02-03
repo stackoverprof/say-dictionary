@@ -34,8 +34,8 @@ import { say, getLanguage, setLanguage } from 'say-dictionary';
 // Get translated text
 say("Order Now"); // Returns "Order Now" or "Panta núna" based on URL
 
-// Get current language from URL
-getLanguage(); // "en" or "is"
+// Get current language from URL (null if no language prefix)
+getLanguage(); // "is" or null
 
 // Navigate to different language
 setLanguage('is'); // Redirects to /is/current-path
@@ -56,24 +56,24 @@ Languages are automatically detected from the dictionary keys.
 
 The language is detected from the first path segment:
 
-- `/is/about` → Icelandic
-- `/about` → Default language (English)
+- `/is/about` → Icelandic (`say()` returns translation)
+- `/about` → No language prefix (`say()` returns the key itself)
 
 ## CLI
 
 Extract translation keys from your source files:
 
 ```bash
-npx say-dictionary extract --src ./app --out ./dictionary.json --languages en,is
+npx say-dictionary extract -l en,is -i ./app -o ./dictionary.json
 ```
 
 Options:
 
-- `--src, -s` - Source directory to scan (required)
-- `--out, -o` - Output dictionary file (required)
-- `--languages, -l` - Comma-separated list of languages (default: en,is)
+- `-l, --lang` - Comma-separated list of languages
+- `-i, --in` - Source directory to scan
+- `-o, --out` - Output dictionary file
 
-Example output in `dictionary.json`:
+Output `dictionary.json`:
 
 ```json
 {
@@ -82,7 +82,7 @@ Example output in `dictionary.json`:
 }
 ```
 
-The first language gets the key as default value. Hand this to an LLM to fill in the translations.
+**The first language (`en`) gets the key as its value.** Hand this to an LLM to fill in the translations.
 
 ## License
 

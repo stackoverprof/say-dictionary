@@ -1,6 +1,6 @@
 {
   "name": "say-dictionary",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "URL-based i18n with configurable languages and CLI for extracting translation keys",
   "type": "module",
   "main": "./dist/index.cjs",
