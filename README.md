@@ -59,6 +59,29 @@ The language is detected from the first path segment:
 - `/is/about` → Icelandic (`say()` returns translation)
 - `/about` → No language prefix (`say()` returns the key itself)
 
+## SSR (Next.js, Remix, etc.)
+
+For SSR frameworks, use `ssrLang()` to prevent hydration mismatch:
+
+```tsx
+// app/[lang]/page.tsx
+export default async function Page({ params }) {
+  const { lang } = await params;
+  return <Home lang={lang} />;
+}
+
+// app/page.tsx
+"use client";
+import { ssrLang, say } from 'say-dictionary';
+
+export default function Home({ lang }: { lang?: string }) {
+  ssrLang(lang ?? null);
+  return <h1>{say("Hello")}</h1>;
+}
+```
+
+This is optional — only needed for SSR. Client-side apps (Vite, CRA) work without it.
+
 ## CLI
 
 Extract translation keys from your source files:
