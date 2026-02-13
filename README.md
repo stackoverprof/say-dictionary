@@ -34,6 +34,11 @@ import { say, getLanguage, setLanguage } from 'say-dictionary';
 // Get translated text
 say("Order Now"); // Returns "Order Now" or "Panta núna" based on URL
 
+// ICU formatting (only when vars are provided)
+say("You have {count, plural, one {# pizza} other {# pizzas}}", {
+  count: 2,
+});
+
 // Get current language from URL (null if no language prefix)
 getLanguage(); // "is" or null
 
@@ -46,11 +51,30 @@ setLanguage('is'); // Redirects to /is/current-path
 ```json
 {
   "Order Now": { "en": "Order Now", "is": "Panta núna" },
-  "Welcome": { "en": "Welcome", "is": "Velkomin" }
+  "Welcome": { "en": "Welcome", "is": "Velkomin" },
+  "You have {count, plural, one {# pizza} other {# pizzas}}": {
+    "is": "Þú átt {count, plural, one {# pizzur} other {# pizzur}}"
+  }
 }
 ```
 
 Languages are automatically detected from the dictionary keys.
+ICU message formatting is **opt-in** and only runs when you pass variables to
+`say(key, vars)`. If a translation is missing for the current language, the key
+itself is treated as the ICU message.
+
+Example:
+
+```ts
+say(
+  "Today is the {day, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of March",
+  { day: 3 }
+);
+// "Today is the 3rd of March"
+
+say("Event on {date, date, ::MMMM d}", { date: new Date("2026-03-02") });
+// "Event on March 2"
+```
 
 ## URL Structure
 

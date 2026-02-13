@@ -1,3 +1,4 @@
+import IntlMessageFormat from "intl-messageformat";
 import { LOG_PREFIX } from "./constants";
 import type { Dictionary } from "./types";
 
@@ -8,6 +9,7 @@ interface GlobalConfig {
 
 let globalConfig: GlobalConfig | null = null;
 let ssrLangOverride: string | null = null;
+const formatterCache = new Map<string, IntlMessageFormat>();
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -84,7 +86,7 @@ export function init(dictionary: Dictionary): void {
  * Get the translated text for a key based on the current language.
  * Returns the key itself if no translation found.
  */
-export function say(key: string): string {
+export function say(key: string, vars?: Record<string, unknown>): string {
   if (!assertInitialized(globalConfig)) {
     return key;
   }
@@ -97,11 +99,28 @@ export function say(key: string): string {
   }
 
   const entry = dictionary[key];
-  if (!entry) {
-    return key;
+  const message = entry ? entry[lang] || key : key;
+  if (!vars) {
+    return message;
   }
 
-  return entry[lang] || key;
+  try {
+    const cacheKey = `${lang}\u0000${message}`;
+    let formatter = formatterCache.get(cacheKey);
+    if (!formatter) {
+      formatter = new IntlMessageFormat(message, lang);
+      formatterCache.set(cacheKey, formatter);
+    }
+    const formatted = formatter.format(vars);
+    return typeof formatted === "string" ? formatted : String(formatted);
+  } catch (error) {
+    const messageText =
+      error instanceof Error ? error.message : "Unknown error";
+    console.warn(
+      `${LOG_PREFIX} Failed to format message for key "${key}": ${messageText}`
+    );
+    return message;
+  }
 }
 
 /**

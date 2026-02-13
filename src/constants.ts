@@ -9,4 +9,4 @@ export const EXCLUDED_DIRECTORIES = [
 
 export const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"] as const;
 
-export const SAY_CALL_PATTERN = /\bsay\s*\(\s*["'`]([^"'`]+)["'`]\s*\)/g;
+export const SAY_CALL_PATTERN = /\bsay\s*\(\s*["'`]([^"'`]+)["'`]\s*(?:,|\))/g;
